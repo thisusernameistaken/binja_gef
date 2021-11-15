@@ -19,7 +19,7 @@ class BinjaCTX:
         f_name = section.path
         vmmap = get_process_maps()
         base_address = [x.page_start for x in vmmap if x.realpath == f_name][0]
-        if not f_name in self.bvs.keys() and (self.follow_libs or len(self.bvs)<1):
+        if not f_name in self.bvs.keys() and (self.follow_libs):
             bv = BinaryViewType.get_view_of_file_with_options(f_name,options={"analysis.mode":"controlFlow","loader.imageBase":base_address})
             self.bvs[f_name] = bv
             self.bv = bv
@@ -165,3 +165,4 @@ register_external_command(BinjaBNDBDisplay())
 register_external_command(BinjaBNDBLoad())
 register_external_command(BinjaBNDBFollowLib())
 register_external_context_pane("HLIL", binja_ctx.display_pane, binja_ctx.title)
+
