@@ -8,16 +8,16 @@ class BinjaCTX:
         self.bvs = {}
         self.bv = None
         self.last_index = None
-        self.follow_libs = False
+        self.follow_libs = True 
         # use on memory
 
     def _get_map(self):
-        addr = lookup_address(current_arch.pc)
+        addr = lookup_address(gef.arch.pc)
         if not addr.valid:
             return
         section = addr.section
         f_name = section.path
-        vmmap = get_process_maps()
+        vmmap = gef.memory.maps
         base_address = [x.page_start for x in vmmap if x.realpath == f_name][0]
         if not f_name in self.bvs.keys() and (self.follow_libs):
             bv = BinaryViewType.get_view_of_file_with_options(f_name,options={"analysis.mode":"controlFlow","loader.imageBase":base_address})
@@ -35,8 +35,8 @@ class BinjaCTX:
 
 
     def display_pane(self):
-        addr = current_arch.pc
-        l_addr = lookup_address(current_arch.pc)
+        addr = gef.arch.pc
+        l_addr = lookup_address(gef.arch.pc)
         if not l_addr.valid:
             return
         section = l_addr.section
@@ -58,9 +58,9 @@ class BinjaCTX:
             hlil_index = hlil.instr_index
         self.last_index = hlil_index
 
-        past_lines_color = get_gef_setting("theme.old_context")
-        nb_lines = get_gef_setting("context.nb_lines_code")
-        cur_line_color = get_gef_setting("theme.source_current_line")
+        past_lines_color = gef.config["theme.old_context"]
+        nb_lines = gef.config["context.nb_lines_code"]
+        cur_line_color = gef.config["theme.source_current_line"]
 
         # function sig
         gef_print(f"{hex(cf.start)}: {cf.function_type.get_string_before_name()} {cf.name}{cf.function_type.get_string_after_name()}")
@@ -89,6 +89,7 @@ class BinjaCTX:
 
 binja_ctx = BinjaCTX()
 
+@register
 class BinjaBNDB(GenericCommand):
     """ Binja bndb"""
     _cmdline_ = "bndb"
@@ -101,6 +102,7 @@ class BinjaBNDB(GenericCommand):
         gef_print(str(binja_ctx.bvs))
         return
 
+@register
 class BinjaBNDBFollowLib(GenericCommand):
     """ Binja display bndb"""
     _cmdline_ = "bndb follow-libs"
@@ -114,6 +116,7 @@ class BinjaBNDBFollowLib(GenericCommand):
         gef_print(f"Binja Follow Libs: {str(binja_ctx.follow_libs)}")
         return
 
+@register
 class BinjaBNDBDisplay(GenericCommand):
     """ Binja display bndb"""
     _cmdline_ = "bndb display"
@@ -126,6 +129,7 @@ class BinjaBNDBDisplay(GenericCommand):
         gef_print(str(binja_ctx.bvs))
         return
 
+@register
 class BinjaBNDBLoad(GenericCommand):
     """ Binja load bndb"""
     _cmdline_ = "bndb load"
@@ -138,8 +142,8 @@ class BinjaBNDBLoad(GenericCommand):
         try:
             if len(argv) == 1:
                 print(f"Loading bndb: {argv[0]}")
-                vmmap = get_process_maps()
-                addr = lookup_address(current_arch.pc)
+                vmmap = gef.memory.maps
+                addr = lookup_address(gef.arch.pc)
                 if not addr.valid:
                     return
                 section = addr.section
@@ -151,7 +155,7 @@ class BinjaBNDBLoad(GenericCommand):
                 binja_ctx.bvs[f_name] = bv 
             else:
                 print(f"Loading bndb: {argv[0]} for {argv[1]}")
-                vmmap = get_process_maps()
+                vmmap = gef.memory.maps
                 base_address = [x.page_start for x in vmmap if x.realpath == argv[1]][0]
                 bv = BinaryViewType.get_view_of_file(argv[0]).rebase(base_address)
                 bv.update_analysis()
@@ -160,9 +164,5 @@ class BinjaBNDBLoad(GenericCommand):
         except:
             self.usage()
 
-register_external_command(BinjaBNDB())
-register_external_command(BinjaBNDBDisplay())
-register_external_command(BinjaBNDBLoad())
-register_external_command(BinjaBNDBFollowLib())
 register_external_context_pane("HLIL", binja_ctx.display_pane, binja_ctx.title)
 
